@@ -1,0 +1,17 @@
+[package]
+name = "rust_lib"
+version = "0.1.0"
+authors = ["Carl Mitchell <carl@eufalconimorph.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+cbindgen = "0.18.0"
+bindgen = "0.57.0"
+
+[dependencies]
+libc = "0.2.92"
+
+[lib]
+crate-type=["staticlib"]

@@ -1,0 +1,62 @@
+// cbindgen generates a C header from a Rust source file
+extern crate cbindgen;
+// bindgen generates some Rust bindings from a C header
+extern crate bindgen;
+
+use cbindgen::Language::C;
+use std::env;
+use std::path::PathBuf;
+
+fn main() {
+    let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+
+    // https://github.com/eqrion/cbindgen/blob/master/docs.md
+    // Settings for cbindgen, uses a Builder pattern
+    cbindgen::Builder::new()
+        .with_crate(crate_dir)
+        .with_language(C)
+        .with_pragma_once(true)
+        .generate()
+        .expect("Unable to generate bindings.")
+        .write_to_file("inc/rust_lib.h");
+
+    /*
+     * https://rust-lang.github.io/rust-bindgen/introduction.html
+     * Bindgen generates binding symbols recursively. Since that makes a mess of
+     *   of the bindings without a lot of work whitelisting, I've made a manual
+     *   copy.
+     * https://medium.com/dwelo-r-d/using-c-libraries-in-rust-13961948c72a is a good article.
+     *
+     * Thus, the code below doesn't get used directly, it outputs an automatic
+     *   bindings file.
+     */
+
+    // Make Cargo regenerate the bindings if the C header changes.
+    println!("cargo:rerun-if-changed=wrapper.h");
+
+    // println!(
+    //     "cargo:warning=c_lib_include_string={}",
+    //     "-I${FFI_PROJECT_ROOT}/c_lib/inc"
+    // );
+    // bindgen also uses a Builder
+    let bindings = bindgen::Builder::default()
+        // The name of the header to generate bindings for
+        .header("${FFI_PROJECT_ROOT}/rust_lib/wrapper.h")
+        // Set the include paths.
+        .clang_arg("-I${FFI_PROJECT_ROOT}/c_lib/inc")
+        // Make Cargo invalidate the crate whenever the wrapper header changes
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        // Use the `libc` crate's types
+        .ctypes_prefix("libc")
+        // Finish builder and generate bindings
+        .generate()
+        // Unwrap the result and panic with a message on failure
+        .expect("Unable to generate Rust bindings.");
+
+    // Write the bindings to the automatic-bindings.rs file.
+    let out_path = PathBuf::from("${FFI_PROJECT_ROOT}/rust_lib/src/");
+    // println!("cargo:warning=out_path = {}", out_path.to_str().unwrap());
+    bindings
+        .write_to_file(out_path.join("automatic-bindings.rs"))
+        .expect("Couldn't write bindings.");
+}
